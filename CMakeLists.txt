@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.3)
 project(grpc_helloworld)
 
 find_package(Protobuf REQUIRED)
+find_package(OpenCV REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -29,7 +30,7 @@ add_custom_command(
     COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
     ARGS "--proto_path=${PROTO_PATH}"
          "--grpc_out=${GENERATED_PROTOBUF_PATH}"
-         "--plugin=protoc-gen-grpc=/usr/local/bin/GRPC_CPP_PLUGIN"
+         "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin"
          "${HELLOWORLD_PROTO}"
     )
 set(GENERATED_PROTOBUF_FILES ${HELLOWORLD_PB_H_FILE} ${HELLOWORLD_PB_CPP_FILE}
@@ -42,3 +43,6 @@ add_executable(greeter_server src/greeter_server.cc ${GENERATED_PROTOBUF_FILES})
 add_executable(greeter_client src/greeter_client.cc ${GENERATED_PROTOBUF_FILES})
 add_executable(greeter_async_server src/greeter_async_server.cc ${GENERATED_PROTOBUF_FILES})
 add_executable(greeter_async_client src/greeter_async_client.cc ${GENERATED_PROTOBUF_FILES})
+
+target_link_libraries(greeter_server ${OpenCV_LIBS})
+target_link_libraries(greeter_client ${OpenCV_LIBS})

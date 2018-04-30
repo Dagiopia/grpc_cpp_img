@@ -1,43 +1,35 @@
 /*
  *
- * Copyright 2015, Google Inc.
- * All rights reserved.
+ * Copyright 2015 gRPC authors.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *     * Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- * copyright notice, this list of conditions and the following disclaimer
- * in the documentation and/or other materials provided with the
- * distribution.
- *     * Neither the name of Google Inc. nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  */
 
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
-#include <grpc++/grpc++.h>
+#include <opencv2/opencv.hpp>
 
+#include <grpcpp/grpcpp.h>
+
+#ifdef BAZEL_BUILD
+#include "examples/protos/helloworld.grpc.pb.h"
+#else
 #include "helloworld.grpc.pb.h"
+#endif
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -51,12 +43,26 @@ class GreeterClient {
   GreeterClient(std::shared_ptr<Channel> channel)
       : stub_(Greeter::NewStub(channel)) {}
 
-  // Assambles the client's payload, sends it and presents the response back
+  // Assembles the client's payload, sends it and presents the response back
   // from the server.
   std::string SayHello(const std::string& user) {
     // Data we are sending to the server.
     HelloRequest request;
-    request.set_name(user);
+
+    cv::Mat frame;
+    std::vector<unsigned char> buff;
+    unsigned char *bufa;
+    cv::VideoCapture cap(0);
+    if (!cap.isOpened())
+        exit(0);
+    cap >> frame;
+    cv::imencode(".jpg", frame, buff);
+    size_t d_size = buff.size();
+    bufa = new unsigned char[d_size];
+    for(int i = 0; i < d_size; i++)
+    	bufa[i] = buff[i];
+
+    request.set_name(bufa, d_size);
 
     // Container for the data we expect from the server.
     HelloReply reply;
@@ -72,6 +78,8 @@ class GreeterClient {
     if (status.ok()) {
       return reply.message();
     } else {
+      std::cout << status.error_code() << ": " << status.error_message()
+                << std::endl;
       return "RPC failed";
     }
   }
@@ -84,9 +92,9 @@ int main(int argc, char** argv) {
   // Instantiate the client. It requires a channel, out of which the actual RPCs
   // are created. This channel models a connection to an endpoint (in this case,
   // localhost at port 50051). We indicate that the channel isn't authenticated
-  // (use of InsecureCredentials()).
-  GreeterClient greeter(
-      grpc::CreateChannel("localhost:50051", grpc::InsecureCredentials()));
+  // (use of InsecureChannelCredentials()).
+  GreeterClient greeter(grpc::CreateChannel(
+      "localhost:50051", grpc::InsecureChannelCredentials()));
   std::string user("world");
   std::string reply = greeter.SayHello(user);
   std::cout << "Greeter received: " << reply << std::endl;

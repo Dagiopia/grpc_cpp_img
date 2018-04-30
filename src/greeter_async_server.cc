@@ -1,33 +1,18 @@
 /*
  *
- * Copyright 2015, Google Inc.
- * All rights reserved.
+ * Copyright 2015 gRPC authors.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *     * Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- * copyright notice, this list of conditions and the following disclaimer
- * in the documentation and/or other materials provided with the
- * distribution.
- *     * Neither the name of Google Inc. nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  */
 
@@ -36,7 +21,8 @@
 #include <string>
 #include <thread>
 
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
+#include <grpc/support/log.h>
 
 #include "helloworld.grpc.pb.h"
 
@@ -67,7 +53,7 @@ class ServerImpl final {
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     // Register "service_" as the instance through which we'll communicate with
     // clients. In this case it corresponds to an *asynchronous* service.
-    builder.RegisterAsyncService(&service_);
+    builder.RegisterService(&service_);
     // Get hold of the completion queue used for the asynchronous communication
     // with the gRPC runtime.
     cq_ = builder.AddCompletionQueue();
@@ -94,6 +80,9 @@ class ServerImpl final {
 
     void Proceed() {
       if (status_ == CREATE) {
+        // Make this instance progress to the PROCESS state.
+        status_ = PROCESS;
+
         // As part of the initial CREATE state, we *request* that the system
         // start processing SayHello requests. In this request, "this" acts are
         // the tag uniquely identifying the request (so that different CallData
@@ -101,8 +90,6 @@ class ServerImpl final {
         // the memory address of this CallData instance.
         service_->RequestSayHello(&ctx_, &request_, &responder_, cq_, cq_,
                                   this);
-        // Make this instance progress to the PROCESS state.
-        status_ = PROCESS;
       } else if (status_ == PROCESS) {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
@@ -116,8 +103,8 @@ class ServerImpl final {
         // And we are done! Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
         // the event.
-        responder_.Finish(reply_, Status::OK, this);
         status_ = FINISH;
+        responder_.Finish(reply_, Status::OK, this);
       } else {
         GPR_ASSERT(status_ == FINISH);
         // Once in the FINISH state, deallocate ourselves (CallData).
@@ -159,7 +146,9 @@ class ServerImpl final {
       // Block waiting to read the next event from the completion queue. The
       // event is uniquely identified by its tag, which in this case is the
       // memory address of a CallData instance.
-      cq_->Next(&tag, &ok);
+      // The return value of Next should always be checked. This return value
+      // tells us whether there is any kind of event or cq_ is shutting down.
+      GPR_ASSERT(cq_->Next(&tag, &ok));
       GPR_ASSERT(ok);
       static_cast<CallData*>(tag)->Proceed();
     }
