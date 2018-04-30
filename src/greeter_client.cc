@@ -1,20 +1,9 @@
 /*
- *
- * Copyright 2015 gRPC authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
+  File: img_trans_client.cpp
+  Date: April, 2018
+  Author: Dagim Sisay <dagiopia@gmail.com>
+  License: AGPL
+*/
 
 #include <iostream>
 #include <memory>
@@ -25,59 +14,65 @@
 
 #include <grpcpp/grpcpp.h>
 
-#ifdef BAZEL_BUILD
-#include "examples/protos/helloworld.grpc.pb.h"
-#else
-#include "helloworld.grpc.pb.h"
-#endif
+#include "cv_img.grpc.pb.h"
 
-using grpc::Channel;
-using grpc::ClientContext;
-using grpc::Status;
-using helloworld::HelloRequest;
-using helloworld::HelloReply;
-using helloworld::Greeter;
+#define SHOW_IMAGE 0
+#define FACE_LOCATION 1
+#define RED_LOCATION 2
 
-class GreeterClient {
+class ImageTransferClient {
  public:
-  GreeterClient(std::shared_ptr<Channel> channel)
-      : stub_(Greeter::NewStub(channel)) {}
+  ImageTransferClient(std::shared_ptr<grpc::Channel> channel)
+      : stub_(cv_img::img_trans_srv::NewStub(channel)) {}
 
-  // Assembles the client's payload, sends it and presents the response back
-  // from the server.
-  std::string SayHello(const std::string& user) {
-    // Data we are sending to the server.
-    HelloRequest request;
+  std::string send_img(cv::Mat in, int op) {
+    cv_img::img_d img;
 
-    cv::Mat frame;
     std::vector<unsigned char> buff;
     unsigned char *bufa;
-    cv::VideoCapture cap(0);
-    if (!cap.isOpened())
-        exit(0);
-    cap >> frame;
-    cv::imencode(".jpg", frame, buff);
+    cv::imencode(".jpg", in, buff);
     size_t d_size = buff.size();
     bufa = new unsigned char[d_size];
     for(int i = 0; i < d_size; i++)
     	bufa[i] = buff[i];
 
-    request.set_name(bufa, d_size);
+    img.set_img_data(bufa, d_size);
+    img.set_operation(op);
 
-    // Container for the data we expect from the server.
-    HelloReply reply;
+    cv_img::ret s;
+    cv_img::rect r;
+    cv_img::circ c;
 
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
-    ClientContext context;
+    grpc::ClientContext ctxt;
+    grpc::Status status;
 
-    // The actual RPC.
-    Status status = stub_->SayHello(&context, request, &reply);
+    if(SHOW_IMAGE == op)
+      status = stub_->img_trans(&ctxt, img, &s);
+    else if(FACE_LOCATION == op)
+      status = stub_->img_trans(&ctxt, img, &r);
+    else if(RED_LOCATION == op)
+      status = stub_->img_trans(&ctxt, img, &c);
 
-    // Act upon its status.
+    
+    std::string srep = "";
     if (status.ok()) {
-      return reply.message();
-    } else {
+      switch (op) {
+        case SHOW_IMAGE:
+	  srep = s.reply(); break;
+	case FACE_LOCATION:
+	  srep = "X: " + std::to_string(r.x()) +
+	         "Y: " + std::to_string(r.y()) +
+		 "W: " + std::to_string(r.w()) +
+		 "H: " + std::to_string(r.h());
+	  break;
+	case RED_LOCATION:
+	  srep = "CX: " + std::to_string(r.cx()) +
+	         "CY: " + std::to_string(r.cy()) +
+		 "R: " + std::to_string(r.r());
+      }
+      return srep;
+    } 
+    else {
       std::cout << status.error_code() << ": " << status.error_message()
                 << std::endl;
       return "RPC failed";
@@ -85,19 +80,31 @@ class GreeterClient {
   }
 
  private:
-  std::unique_ptr<Greeter::Stub> stub_;
+  std::unique_ptr<cv_img::img_trans_srv::Stub> stub_;
 };
 
 int main(int argc, char** argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint (in this case,
-  // localhost at port 50051). We indicate that the channel isn't authenticated
-  // (use of InsecureChannelCredentials()).
-  GreeterClient greeter(grpc::CreateChannel(
-      "localhost:50051", grpc::InsecureChannelCredentials()));
-  std::string user("world");
-  std::string reply = greeter.SayHello(user);
-  std::cout << "Greeter received: " << reply << std::endl;
+  
+  int op = 0;
+  if ( 1 < argc)
+    op = (int)strtol(argv[1], NULL, 10);
+  if (0 > op && 2 < op)
+    op = 0;
+
+  cv::VideoCapture cap(0);
+  if(!cap.isOpened())
+  { std::cout<<"Couldn't Open Camera\n"; return -1; }
+  
+  cv::Mat frame;
+  cap >> frame;
+  if(frame.empty())
+  { std::cout<<"Couldn't Capture Image\n"; return -1; }
+
+  ImageTransferClient img_trns(grpc::CreateChannel(
+      "localhost:7070", grpc::InsecureChannelCredentials()));
+  
+  std::string reply = img_trns.send_img(frame, op);
+  std::cout << "Return: " << reply << std::endl;
 
   return 0;
 }

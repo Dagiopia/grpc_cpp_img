@@ -10,14 +10,15 @@ include_directories(/usr/local/include)
 link_directories(/usr/local/lib)
 
 set(PROTO_PATH "${CMAKE_SOURCE_DIR}/protos")
-set(HELLOWORLD_PROTO "${PROTO_PATH}/helloworld.proto")
+set(PROTO_FILE_NAME "cv_img")
+set(HELLOWORLD_PROTO "${PROTO_PATH}/${PROTO_FILE_NAME}.proto")
 set(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
 
-set(HELLOWORLD_PB_CPP_FILE "${GENERATED_PROTOBUF_PATH}/helloworld.pb.cc")
-set(HELLOWORLD_PB_H_FILE "${GENERATED_PROTOBUF_PATH}/helloworld.pb.h")
-set(HELLOWORLD_GRPC_PB_CPP_FILE "${GENERATED_PROTOBUF_PATH}/helloworld.grpc.pb.cc")
-set(HELLOWORLD_GRPC_PB_H_FILE "${GENERATED_PROTOBUF_PATH}/helloworld.grpc.pb.h")
+set(HELLOWORLD_PB_CPP_FILE "${GENERATED_PROTOBUF_PATH}/${PROTO_FILE_NAME}.pb.cc")
+set(HELLOWORLD_PB_H_FILE "${GENERATED_PROTOBUF_PATH}/${PROTO_FILE_NAME}.pb.h")
+set(HELLOWORLD_GRPC_PB_CPP_FILE "${GENERATED_PROTOBUF_PATH}/${PROTO_FILE_NAME}.grpc.pb.cc")
+set(HELLOWORLD_GRPC_PB_H_FILE "${GENERATED_PROTOBUF_PATH}/${PROTO_FILE_NAME}.grpc.pb.h")
 add_custom_command(
     OUTPUT "${HELLOWORLD_PB_H_FILE}"
            "${HELLOWORLD_PB_CPP_FILE}"
@@ -41,8 +42,8 @@ link_libraries(grpc++_unsecure grpc gpr ${PROTOBUF_LIBRARY})
 
 add_executable(greeter_server src/greeter_server.cc ${GENERATED_PROTOBUF_FILES})
 add_executable(greeter_client src/greeter_client.cc ${GENERATED_PROTOBUF_FILES})
-add_executable(greeter_async_server src/greeter_async_server.cc ${GENERATED_PROTOBUF_FILES})
-add_executable(greeter_async_client src/greeter_async_client.cc ${GENERATED_PROTOBUF_FILES})
+#add_executable(greeter_async_server src/greeter_async_server.cc ${GENERATED_PROTOBUF_FILES})
+#add_executable(greeter_async_client src/greeter_async_client.cc ${GENERATED_PROTOBUF_FILES})
 
 target_link_libraries(greeter_server ${OpenCV_LIBS})
 target_link_libraries(greeter_client ${OpenCV_LIBS})

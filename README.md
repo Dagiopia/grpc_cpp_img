@@ -1,15 +1,14 @@
-# gRPC C++ Hello World with CMake
+# gRPC, Cmake, C++ OpenCV Image Transfer
 
-This is just [gRPCs](https://github.com/grpc/grpc) C++ Hello World sample 
-([see here](https://github.com/grpc/grpc/tree/release-0_11/examples/cpp)), but
-instead of using plain makefiles, I'm using CMake. You need to have gRPC
-installed to make this run.
+This is just [this](https://github.com/jan-alexander/grpc-cpp-helloworld-cmake). 
+Needed his cmake. 
+The client sends an image along with the operation to be done. 
+The image is sent after being serialized by encoding into jpg.
 
 ## Compile
 
-1. `git clone https://github.com/jan-alexander/grpc-cpp-helloworld-cmake
-   ~/grpc-cpp-helloworld-cmake`
-2. `cd ~/grpc-cpp-helloworld-cmake`
+1. `git clone https://github.com/Dagiopia/grpc_cpp_img.git
+2. `cd grpc_cpp_img`
 3. `mkdir build && cd build`
 4. `cmake ..`
 5. `make`
