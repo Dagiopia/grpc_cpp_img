@@ -16,59 +16,76 @@
 
 #include "cv_img.grpc.pb.h"
 
-#define SHOW_IMAGE 0   
-#define FACE_LOCATION 1
-#define RED_LOCATION 2 
 
 class ImageTransferService final : public cv_img::img_trans_srv::Service {
-  grpc::Status img_trans(grpc::ServerContext* ctxt, const cv_img::img_d *img, cv_img::ret *reply) override {
+  grpc::Status img_trans_s(grpc::ServerContext* ctxt, const cv_img::img_d *img, cv_img::ret *reply) 
+    override {
     cv::Mat frame;
     std::vector<unsigned char> dim;
     size_t dlen = img->img_data().length();
-    int op = img->operation();
     for(int i = 0 ; i < dlen; i++)
     	dim.push_back((unsigned char)img->img_data()[i]);
     frame = cv::imdecode(dim, 1);
     std::string srep = "-";
-    if (SHOW_IMAGE == op){
-      cv::imshow("img", frame);
-      cv::waitKey(0);
-      srep = "Donw Showing"
-    }
-    else if (FACE_LOCATION == op) {
+    cv::imshow("img", frame);
+    cv::waitKey(0);
+    srep = "Done Showing";
+    reply->set_reply(srep);
+    return grpc::Status::OK;
+  }
+
+  grpc::Status img_trans_f(grpc::ServerContext *ctxt, const cv_img::img_d *img, cv_img::rect *rec)
+    override {
+      cv::Mat frame;
+      std::vector<unsigned char> dim;
+      size_t dlen = img->img_data().length();
+      for(int i = 0 ; i < dlen; i++)
+    	dim.push_back((unsigned char)img->img_data()[i]);
+      frame = cv::imdecode(dim, 1);
       cv::CascadeClassifier fdet;
       std::vector<cv::Rect> out;
       fdet.load("haarcascade_frontalface_alt.xml");
-      fdet.detectMultiScale(frame, out, 1.1, 4, 0|CV_HAAR_SCALE_IMAGE, cv::Size(30, 30));
-      cv_img::rect r;
-      r->set_x(out.x); r->set_y(out.y);
-      r->set_w(out.w); r->set_h(out.h);
-    }
-    else {
+      fdet.detectMultiScale(frame, out, 1.1, 4, 
+		      cv::CASCADE_DO_ROUGH_SEARCH | cv::CASCADE_FIND_BIGGEST_OBJECT, 
+		      cv::Size(30, 30));
+      if(out.size() > 0){
+        rec->set_x(out[0].x); rec->set_y(out[0].y);
+        rec->set_w(out[0].width); rec->set_h(out[0].height);
+      }
+      return grpc::Status::OK;
+  }
+
+  grpc::Status img_trans_r(grpc::ServerContext *ctxt, const cv_img::img_d *img, cv_img::circ *cir)
+    override {
+      cv::Mat frame;
+      std::vector<unsigned char> dim;
+      size_t dlen = img->img_data().length();
+      for(int i = 0 ; i < dlen; i++)
+    	dim.push_back((unsigned char)img->img_data()[i]);
+      frame = cv::imdecode(dim, 1);
       std::vector<std::vector<cv::Point> > cntrs;
       std::vector<cv::Vec4i> hier;
-      cv::inRange(frame, [174, 0, 0], [179, 0, 0], frame);
+      std::vector<int> hsv_lower({174, 0, 0});
+      std::vector<int> hsv_upper({179, 255, 255});
+      cv::inRange(frame, hsv_lower, hsv_upper, frame);
       cv::findContours(frame, cntrs, hier, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
       if(cntrs.size() > 0){
         double max_area = 0;
 	int max_idx;
 	for(int i = 0; i < cntrs.size(); i++){
-          if ( cv::contourArea(cntrs[i]) > max_area){
-	    max_area = cv::contourArea(cntrs[i]);
-	    max_idx = i;
-	  }
-	}
-	cv::Point2f cent;
-	float rad;
-	cv::minEnclosingCircle(cntrs[max_idx], cent, rad);
-	cv_img::circ c;
-	c->set_cx(cent.x);
-	c->set_cy(cent.y);
-	c->set_r(rad);
+	  if ( cv::contourArea(cntrs[i]) > max_area){
+            max_area = cv::contourArea(cntrs[i]);
+            max_idx = i;
+          }
+        }
+        cv::Point2f cent;
+        float rad;
+        cv::minEnclosingCircle(cntrs[max_idx], cent, rad);
+        cir->set_cx(cent.x);
+        cir->set_cy(cent.y);
+        cir->set_r(rad);
       }
-    }
-    reply->set_reply(srep);
-    return grpc::Status::OK;
+      return grpc::Status::OK;
   }
 };
 

@@ -20,6 +20,8 @@
 #define FACE_LOCATION 1
 #define RED_LOCATION 2
 
+#define IMG_ENCODING ".jpg"
+
 class ImageTransferClient {
  public:
   ImageTransferClient(std::shared_ptr<grpc::Channel> channel)
@@ -30,14 +32,14 @@ class ImageTransferClient {
 
     std::vector<unsigned char> buff;
     unsigned char *bufa;
-    cv::imencode(".jpg", in, buff);
+    cv::imencode(IMG_ENCODING, in, buff);
     size_t d_size = buff.size();
     bufa = new unsigned char[d_size];
     for(int i = 0; i < d_size; i++)
     	bufa[i] = buff[i];
 
     img.set_img_data(bufa, d_size);
-    img.set_operation(op);
+    img.set_encoding(IMG_ENCODING);
 
     cv_img::ret s;
     cv_img::rect r;
@@ -47,11 +49,11 @@ class ImageTransferClient {
     grpc::Status status;
 
     if(SHOW_IMAGE == op)
-      status = stub_->img_trans(&ctxt, img, &s);
+      status = stub_->img_trans_s(&ctxt, img, &s);
     else if(FACE_LOCATION == op)
-      status = stub_->img_trans(&ctxt, img, &r);
+      status = stub_->img_trans_f(&ctxt, img, &r);
     else if(RED_LOCATION == op)
-      status = stub_->img_trans(&ctxt, img, &c);
+      status = stub_->img_trans_r(&ctxt, img, &c);
 
     
     std::string srep = "";
@@ -66,9 +68,9 @@ class ImageTransferClient {
 		 "H: " + std::to_string(r.h());
 	  break;
 	case RED_LOCATION:
-	  srep = "CX: " + std::to_string(r.cx()) +
-	         "CY: " + std::to_string(r.cy()) +
-		 "R: " + std::to_string(r.r());
+	  srep = "CX: " + std::to_string(c.cx()) +
+	         "CY: " + std::to_string(c.cy()) +
+		 "R: " + std::to_string(c.r());
       }
       return srep;
     } 
@@ -88,7 +90,12 @@ int main(int argc, char** argv) {
   int op = 0;
   if ( 1 < argc)
     op = (int)strtol(argv[1], NULL, 10);
-  if (0 > op && 2 < op)
+  else{
+    std::cout<<argv[0]<<" OPERATION_CODE\n \t\t0 = SHOW_IMAGE\n \t\t"
+	     <<"1 = FACE_LOCATION\n \t\t2 = RED_LOCATION\n";
+    return 0;
+  }
+  if (0 > op || 2 < op)
     op = 0;
 
   cv::VideoCapture cap(0);
@@ -106,5 +113,4 @@ int main(int argc, char** argv) {
   std::string reply = img_trns.send_img(frame, op);
   std::cout << "Return: " << reply << std::endl;
 
-  return 0;
-}
+  return 0;}

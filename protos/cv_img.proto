@@ -10,14 +10,14 @@ syntax = "proto3";
 package cv_img;
 
 service img_trans_srv {
-  rpc img_trans (img_d) returns (ret) {}
-  rpc img_trans (img_d) returns (rect) {}
-  rpc img_trans (img_d) returns (circ) {}
+  rpc img_trans_s (img_d) returns (ret) {}
+  rpc img_trans_f (img_d) returns (rect) {}
+  rpc img_trans_r (img_d) returns (circ) {}
 }
 
 message img_d {
   bytes img_data = 1;
-  int32 operation = 2;
+  string encoding = 2;
 }
 
 message ret {
