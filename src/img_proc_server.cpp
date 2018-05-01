@@ -1,5 +1,5 @@
 /*
-  File: img_trans_server.cpp
+  File: img_proc_server.cpp
   Date: April, 2018
   Author: Dagim Sisay <dagiopia@gmail.com>
   License: AGPL
