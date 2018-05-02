@@ -31,13 +31,13 @@ class ImageTransferClient {
     cv_img::img_d img;
 
     std::vector<unsigned char> buff;
-    unsigned char *bufa;
     cv::imencode(IMG_ENCODING, in, buff);
     size_t d_size = buff.size();
-    bufa = new unsigned char[d_size];
-    for(int i = 0; i < d_size; i++)
-    	bufa[i] = buff[i];
+    //for(int i = 0; i < d_size; i++)
+    // 	bufa[i] = buff[i];
 
+    unsigned char *bufa = &buff[0];
+    
     img.set_img_data(bufa, d_size);
     img.set_encoding(IMG_ENCODING);
 

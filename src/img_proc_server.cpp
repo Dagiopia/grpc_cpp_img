@@ -21,10 +21,8 @@ class ImageTransferService final : public cv_img::img_trans_srv::Service {
   grpc::Status img_trans_s(grpc::ServerContext* ctxt, const cv_img::img_d *img, cv_img::ret *reply) 
     override {
     cv::Mat frame;
-    std::vector<unsigned char> dim;
     size_t dlen = img->img_data().length();
-    for(int i = 0 ; i < dlen; i++)
-    	dim.push_back((unsigned char)img->img_data()[i]);
+    std::vector<unsigned char> dim(img->img_data().begin(), img->img_data().end());
     frame = cv::imdecode(dim, 1);
     std::string srep = "-";
     cv::imshow("img", frame);
@@ -37,10 +35,8 @@ class ImageTransferService final : public cv_img::img_trans_srv::Service {
   grpc::Status img_trans_f(grpc::ServerContext *ctxt, const cv_img::img_d *img, cv_img::rect *rec)
     override {
       cv::Mat frame;
-      std::vector<unsigned char> dim;
       size_t dlen = img->img_data().length();
-      for(int i = 0 ; i < dlen; i++)
-    	dim.push_back((unsigned char)img->img_data()[i]);
+      std::vector<unsigned char> dim(img->img_data().begin(), img->img_data().end());
       frame = cv::imdecode(dim, 1);
       cv::CascadeClassifier fdet;
       std::vector<cv::Rect> out;
@@ -58,10 +54,8 @@ class ImageTransferService final : public cv_img::img_trans_srv::Service {
   grpc::Status img_trans_r(grpc::ServerContext *ctxt, const cv_img::img_d *img, cv_img::circ *cir)
     override {
       cv::Mat frame;
-      std::vector<unsigned char> dim;
       size_t dlen = img->img_data().length();
-      for(int i = 0 ; i < dlen; i++)
-    	dim.push_back((unsigned char)img->img_data()[i]);
+      std::vector<unsigned char> dim(img->img_data().begin(), img->img_data().end());
       frame = cv::imdecode(dim, 1);
       std::vector<std::vector<cv::Point> > cntrs;
       std::vector<cv::Vec4i> hier;
