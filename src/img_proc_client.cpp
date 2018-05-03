@@ -42,7 +42,7 @@ class ImageTransferClient {
     img.set_encoding(IMG_ENCODING);
 
     cv_img::ret s;
-    cv_img::rect r;
+    cv_img::rects r;
     cv_img::circ c;
 
     grpc::ClientContext ctxt;
@@ -62,10 +62,12 @@ class ImageTransferClient {
         case SHOW_IMAGE:
 	  srep = s.reply(); break;
 	case FACE_LOCATION:
-	  srep = "X: " + std::to_string(r.x()) +
-	         "Y: " + std::to_string(r.y()) +
-		 "W: " + std::to_string(r.w()) +
-		 "H: " + std::to_string(r.h());
+	  for(int i = 0; i < r.rcts_size(); i++) { 
+	      srep += "X: " + std::to_string(r.rcts(i).x()) +
+	         "Y: " + std::to_string(r.rcts(i).y()) +
+		 "W: " + std::to_string(r.rcts(i).w()) +
+		 "H: " + std::to_string(r.rcts(i).h()) + "\n";
+	  }
 	  break;
 	case RED_LOCATION:
 	  srep = "CX: " + std::to_string(c.cx()) +

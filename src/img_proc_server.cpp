@@ -32,7 +32,7 @@ class ImageTransferService final : public cv_img::img_trans_srv::Service {
     return grpc::Status::OK;
   }
 
-  grpc::Status img_trans_f(grpc::ServerContext *ctxt, const cv_img::img_d *img, cv_img::rect *rec)
+  grpc::Status img_trans_f(grpc::ServerContext *ctxt, const cv_img::img_d *img, cv_img::rects *recs)
     override {
       cv::Mat frame;
       size_t dlen = img->img_data().length();
@@ -42,11 +42,12 @@ class ImageTransferService final : public cv_img::img_trans_srv::Service {
       std::vector<cv::Rect> out;
       fdet.load("haarcascade_frontalface_alt.xml");
       fdet.detectMultiScale(frame, out, 1.1, 4, 
-		      cv::CASCADE_DO_ROUGH_SEARCH | cv::CASCADE_FIND_BIGGEST_OBJECT, 
+		      0 | cv::CASCADE_SCALE_IMAGE, 
 		      cv::Size(30, 30));
-      if(out.size() > 0){
-        rec->set_x(out[0].x); rec->set_y(out[0].y);
-        rec->set_w(out[0].width); rec->set_h(out[0].height);
+      for(int i = 0; i < out.size(); i++){
+	cv_img::rect *trec = recs->add_rcts();
+	trec->set_x(out[i].x); trec->set_y(out[i].y);
+        trec->set_w(out[i].width); trec->set_h(out[i].height);
       }
       return grpc::Status::OK;
   }
